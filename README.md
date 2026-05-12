@@ -13,6 +13,10 @@ Minimal FastAPI backend for receiving real-time Twilio call audio over WebSocket
    ```bash
    uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
+4. Optional (recommended for production): set a stable public URL used in TwiML:
+   ```bash
+   export PUBLIC_BASE_URL=https://your-domain.com
+   ```
 
 ## Twilio webhook setup
 
