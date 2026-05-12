@@ -1,4 +1,5 @@
 import base64
+import binascii
 import json
 import logging
 import os
@@ -11,7 +12,25 @@ app = FastAPI()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("voice-ai")
-HOST_PATTERN = re.compile(r"^[A-Za-z0-9.-]+(?::\d{1,5})?$")
+HOST_LABEL_PATTERN = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
+
+
+def _is_valid_host(host: str) -> bool:
+    hostname, separator, port = host.rpartition(":")
+    if separator and port:
+        if not port.isdigit() or not (1 <= int(port) <= 65535):
+            return False
+    else:
+        hostname = host
+
+    if not hostname:
+        return False
+    if hostname == "localhost":
+        return True
+    if ".." in hostname:
+        return False
+
+    return all(HOST_LABEL_PATTERN.fullmatch(label) for label in hostname.split("."))
 
 
 def _resolve_stream_url(request: Request) -> str:
@@ -25,7 +44,7 @@ def _resolve_stream_url(request: Request) -> str:
         logger.warning("PUBLIC_BASE_URL must start with https:// or wss://, falling back to request host")
 
     forwarded_host = request.headers.get("x-forwarded-host")
-    if forwarded_host and HOST_PATTERN.fullmatch(forwarded_host):
+    if forwarded_host and _is_valid_host(forwarded_host):
         return f"wss://{forwarded_host}/ws/audio"
 
     host = request.url.hostname or "localhost"
@@ -72,7 +91,11 @@ async def websocket_audio(websocket: WebSocket) -> None:
                 logger.info("Stream started: %s", stream_sid)
             elif event == "media":
                 payload = message.get("media", {}).get("payload", "")
-                audio_chunk = base64.b64decode(payload) if payload else b""
+                try:
+                    audio_chunk = base64.b64decode(payload, validate=True) if payload else b""
+                except (binascii.Error, ValueError):
+                    logger.warning("Received invalid base64 audio payload")
+                    continue
                 logger.debug("Received audio chunk: %d bytes", len(audio_chunk))
             elif event == "stop":
                 logger.info("Stream stopped")
