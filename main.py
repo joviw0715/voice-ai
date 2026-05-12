@@ -73,7 +73,7 @@ async def websocket_audio(websocket: WebSocket) -> None:
             elif event == "media":
                 payload = message.get("media", {}).get("payload", "")
                 audio_chunk = base64.b64decode(payload) if payload else b""
-                logger.info("Received audio chunk: %d bytes", len(audio_chunk))
+                logger.debug("Received audio chunk: %d bytes", len(audio_chunk))
             elif event == "stop":
                 logger.info("Stream stopped")
                 break
