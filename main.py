@@ -10,7 +10,7 @@ async def incoming_call(request: Request):
     twiml = """
     <Response>
         <Connect>
-            <Stream url="wss://YOUR_DOMAIN/ws/audio" />
+            <Stream url="wss://voice-ai.zeabur.app/ws/audio" />
         </Connect>
     </Response>
     """
